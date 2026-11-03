@@ -4,33 +4,29 @@
 
 ## 解題說明
 
-要完成 Polynomial 類別，使用題目指定的 Term 動態陣列儲存多項式，提供 Add、Mult、Eval，並且重載輸入和輸出運算子。兩個問題使用同一個類別，所以放在同一份程式裡。
+這次作業是要完成 Polynomial 類別，讓程式可以輸入多項式，做加法、乘法，還有代入數字算出結果。另外也要寫出 >> 和 <<，用來輸入及輸出。
 
 ### 解題策略
 
-1. 每一項記錄係數 coef 和指數 exp。例如 $2x^2-3x+1$ 存成 `(2,2)`、`(-3,1)`、`(1,0)`。只存非零項，才不會為了很大的指數開一大段沒用到的陣列。
-2. 陣列照指數由大到小排列。新增時先找位置，遇到相同指數就把係數相加。這樣輸入順序不同也不影響結果。
-3. 如果合併後係數是 0，就移除那一項。例如 $x-x$ 最後要印成 0，不能留下沒有作用的項。
-4. 陣列滿了就開兩倍大的空間，把舊資料搬過去，再釋放舊陣列。capacity 是空間大小，terms 是目前項數，這兩個數字不能混用。
-5. 加法先複製第一個多項式，再把第二個的每一項插入。相同指數會在插入時合併。例如 $(2x^2-3x+1)+(x-1)=2x^2-2x$。
-6. 乘法用兩層迴圈，讓第一個多項式的每一項乘上第二個的每一項。係數相乘、指數相加，再插入結果。例如 $(x-1)(x+1)=x^2-1$，中間的兩個一次項會抵消。
-7. Eval 逐項計算係數乘上 x 的指定次方，再加總。常數項的指數是 0，所以 x 是 0 時，常數也要保留下來。
-8. 輸入先讀項數，再讀每項的「係數 指數」。先存到暫時物件，全部成功才更新原物件，避免讀到一半失敗時留下半份資料。
-9. 輸出要處理正負號、係數 1、一次項和常數。比如負的一次項印成 `-x`，零多項式印成 `0`。
-10. 類別自己管理動態陣列，所以要寫複製建構子、指定運算子和解構子。複製時另外開陣列，才不會改了一個物件，另一個也跟著變，或兩個物件釋放同一段記憶體。
+1. 先用 Term 存一項資料，coef 是係數，exp 是指數。例如 3x^2 就存係數 3、指數 2。這樣每一項的兩個數字就不會搞混。
+2. 再用題目指定的 termArray 存全部的項。terms 是已經存了幾項，capacity 是陣列可以放幾項，因為陣列可能還沒放滿，所以這兩個數字要分開。
+3. 輸入時先讀項數，再讀每項的係數和指數。例如輸入「2 3 2 1 0」就是 3x^2 + 1。先存到暫時的多項式，全部讀完才更新，這樣資料少打一項時，原本的資料才不會被改掉。
+4. 每次放入一項，都按照指數由大到小找位置。如果指數一樣，就把係數加起來。比如 2x 和 3x 要合成 5x，不用分開存。
+5. 如果加起來是 0，就把那一項移除。因為像 2x - 2x 最後就是 0，不需要再存一個係數是 0 的項。
+6. 陣列放滿時，另外開兩倍大的陣列，把原本的項複製過去，再刪掉舊陣列。這樣輸入超過一開始的容量也可以繼續存。
+7. 加法先複製第一個多項式，再把第二個的項一個一個放進去。因為前面已經寫好合併同次方的處理，所以這邊可以直接用。例如 (x + 1) + (x - 1) 會得到 2x。
+8. 乘法用兩層迴圈，讓兩邊每一項都乘到。係數相乘，指數相加，再放進結果。例如 (x + 1)(x - 1) 會得到 x^2 - 1。
+9. 代入時，就把每項的係數乘上 x 的指定次方，最後全部加起來。例如 2x^2 - 3x + 1 代入 2，結果是 8 - 6 + 1 = 3。
+10. 最後處理輸出的正負號。一次項不用印 ^1，係數是 1 的 x 項不用印 1，沒有任何項時就印 0，這樣比較容易看。
+11. 因為用了動態陣列，複製物件時也要另外開一份陣列。不然兩個物件共用同一個位址，改其中一個就可能影響另一個，刪除時也可能出錯。
 
 ## 程式實作
 
-程式放在 `src/Polynomial.h`、`src/Polynomial.cpp` 和 `src/main.cpp`。`src/tests.cpp` 是另外執行的測試程式，不和 main.cpp 一起編譯。
-
-下方附上完整程式碼。
-
-### Polynomial.h
+全部程式放在 src/main.cpp，編譯這一個檔案就可以了。只使用規範內的 iostream 和 cmath，沒有用 vector 或其他規範外的標準標頭。
 
 ```cpp
-#ifndef POLYNOMIAL_H
-#define POLYNOMIAL_H
 #include <iostream>
+#include <cmath>
 
 class Polynomial;
 class Term {
@@ -58,14 +54,6 @@ public:
     friend std::istream& operator>>(std::istream& in, Polynomial& poly);
     friend std::ostream& operator<<(std::ostream& out, const Polynomial& poly);
 };
-#endif
-```
-
-### Polynomial.cpp
-
-```cpp
-#include "Polynomial.h"
-#include <cmath>
 
 Polynomial::Polynomial() {
     capacity = 2;
@@ -202,12 +190,6 @@ std::ostream& operator<<(std::ostream& out, const Polynomial& poly) {
     poly.Print(out);
     return out;
 }
-```
-
-### main.cpp
-
-```cpp
-#include "Polynomial.h"
 
 int main() {
     try {
@@ -230,154 +212,44 @@ int main() {
 }
 ```
 
-### tests.cpp
-
-```cpp
-#include "Polynomial.h"
-#include <sstream>
-#include <string>
-#include <cmath>
-
-int checks = 0;
-int failures = 0;
-void check(bool ok, const char* name) {
-    ++checks;
-    if (!ok) { ++failures; std::cout << "FAIL: " << name << '\n'; }
-}
-Polynomial read(const std::string& text) {
-    std::istringstream in(text);
-    Polynomial p;
-    in >> p;
-    return p;
-}
-std::string show(const Polynomial& p) {
-    std::ostringstream out;
-    out << p;
-    return out.str();
-}
-int main() {
-    Polynomial zero, a = read("3 2 2 -3 1 1 0"), b = read("2 1 1 -1 0");
-    check(show(zero) == "0", "default zero");
-    check(show(a) == "2x^2 - 3x + 1", "format");
-    check(show(a.Add(b)) == "2x^2 - 2x", "addition");
-    check(show(a.Mult(b)) == "2x^3 - 5x^2 + 4x - 1", "multiplication");
-    check(a.Eval(2) == 3, "evaluation");
-    check(a.Eval(0) == 1, "constant at zero");
-    check(a.Eval(-1) == 6, "negative x");
-    check(show(a.Mult(zero)) == "0", "multiply zero");
-    check(show(a.Add(zero)) == show(a), "add zero");
-    check(show(read("4 1 0 2 3 -2 3 0 8")) == "1", "unsorted duplicate cancellation");
-    check(show(read("2 1 1 -1 1")) == "0", "cancel all");
-    check(show(read("2 -1 1 -1 0")) == "-x - 1", "negative one");
-    check(show(read("2 0.5 2 0.25 0")) == "0.5x^2 + 0.25", "fraction coefficients");
-    Polynomial copy(a); a = zero;
-    check(show(copy) == "2x^2 - 3x + 1", "copy independence");
-    a = copy; copy = zero;
-    check(show(a) == "2x^2 - 3x + 1", "assignment independence");
-    a = a;
-    check(show(a) == "2x^2 - 3x + 1", "self assignment");
-    const char* bad[] = {"-1", "1 2 -1", "2 1 1", "hello", "1 abc 2", "1 1 2147483648"};
-    for (const char* text : bad) {
-        Polynomial p(a);
-        std::istringstream in(text); in >> p;
-        check(in.fail() && show(p) == show(a), "bad input keeps original");
-    }
-    Polynomial large;
-    std::ostringstream data; data << 80;
-    for (int i = 0; i < 80; ++i) data << " 1 " << i;
-    large = read(data.str());
-    check(large.Eval(1) == 80, "array growth");
-    bool caught = false;
-    try { read("1 1 2147483647").Mult(read("1 1 1")); }
-    catch (const char*) { caught = true; }
-    check(caught, "exponent overflow");
-    caught = false;
-    try { read("1 3e38 1").Add(read("1 3e38 1")); }
-    catch (const char*) { caught = true; }
-    check(caught, "coefficient addition overflow");
-    caught = false;
-    try { read("1 3e38 1").Mult(read("1 2 1")); }
-    catch (const char*) { caught = true; }
-    check(caught, "coefficient multiplication overflow");
-    caught = false;
-    try { read("1 3e38 2").Eval(2); }
-    catch (const char*) { caught = true; }
-    check(caught, "evaluation overflow");
-    check(show(read("1 0.00000001 1")) != "0", "keep small coefficient");
-    check(show(a.Add(a)) == "4x^2 - 6x + 2", "add itself");
-    check(show(read("0").Mult(read("0"))) == "0", "two zero polynomials");
-    check(show(read("2 1 2 -1 0").Mult(read("2 1 2 1 0"))) == "x^4 - 1", "middle product cancels");
-    Polynomial chained;
-    chained = copy = a;
-    check(show(chained) == show(a) && show(copy) == show(a), "chained assignment");
-    // 用代入值驗證運算，避免只檢查輸出的字串。
-    for (int i = -10; i <= 10; ++i) {
-        Polynomial p = read("3 2 2 -3 1 1 0"), q = read("2 1 1 -1 0");
-        check(p.Add(q).Eval(i) == p.Eval(i) + q.Eval(i), "sum identity");
-        check(p.Mult(q).Eval(i) == p.Eval(i) * q.Eval(i), "product identity");
-    }
-    std::cout << checks << " checks, " << failures << " failures\n";
-    return failures ? 1 : 0;
-}
-```
-
 ## 效能分析
 
-設兩個多項式分別有 m、n 個非零項，k 是乘法計算過程中，結果陣列最多同時存的項數，且 $k\le mn$。這邊看的是過程中的最多項數，因為後面有些項還可能抵消。
+這邊把第一個多項式的項數記成 m，第二個記成 n。k 是乘法過程中，結果陣列最多同時存了幾項，最多是 mn 項。
 
-| 操作 | 時間複雜度 | 額外空間 |
-| --- | --- | --- |
-| 插入一項，目前有 t 項 | O(t) | 擴充時 O(t)，沒有擴充時 O(1) |
-| Add | O(m+n(m+n)) | O(m+n) |
-| Mult | O(mn(k+1))，最壞 O((mn)^2) | O(n+k) |
-| Eval | O(m log(E+1))，以整數次方用平方乘法估算 | O(1) |
-| 輸入 n 項 | O(n^2) | O(n) |
-| 輸出 m 項 | O(m)，不計數字轉字串長度 | O(1) |
-
-E 是最大指數。實作使用標準函式 pow，其實際成本取決於函式庫，上表 Eval 的時間是用常見整數次方算法估算，不是保證 pow 的內部實作。固定寬度指數的運算也常簡化記為 O(m)。
-
-乘法雖然只有兩層迴圈，但每次插入還要找位置、搬動陣列，所以不能直接寫成 O(mn)。函式參數照題目的介面使用傳值，會多複製第二個多項式，空間分析也把它算進去。
+1. 加法時間是 O(m + n(m+n))。因為要先複製第一個多項式，再插入第二個的每一項，而插入時還要找位置和搬資料。額外空間是 O(m+n)。
+2. 乘法時間是 O(mn(k+1))，最壞是 O((mn)^2)。雖然有兩層迴圈，但每次乘完還有插入的工作，所以不能只算 O(mn)。額外空間是 O(n+k)，包含傳入參數的複製。
+3. 代入會走過 m 項。如果把固定範圍數字的 pow 運算算成固定成本，時間是 O(m)，額外空間是 O(1)。
+4. 輸入 n 項最壞是 O(n^2)，因為插入可能搬動前面的資料。暫存多項式需要 O(n) 空間。輸出只走過所有項，時間是 O(m)，額外空間是 O(1)。
 
 ## 測試與驗證
 
 ### 測試案例
 
-這邊除了測一般的加法和乘法，也另外測了一些比較容易出錯的情況。使用 GCC 16.2.0 編譯後，74 項檢查全部通過，結果是 `74 checks, 0 failures`。
+用另外的測試程式實際檢查過 74 項，結果是 74 checks, 0 failures。測試程式只在開發時使用，繳交的 src 裡面只留下 main.cpp。
 
-| 情況 | 預期結果或檢查目的 |
+| 測試內容 | 結果 |
 | --- | --- |
-| 預設建構 | 輸出 0 |
-| 一般加法 | 2x^2 - 2x |
-| 一般乘法 | 2x^3 - 5x^2 + 4x - 1 |
-| x = 2、0、-1 | 分別得到 3、1、6 |
-| 與零多項式相加或相乘 | 原多項式或 0 |
-| 亂序輸入、重複指數 | 排序並合併 |
-| 係數為零、全部抵消 | 不留下零項 |
-| 係數為 -1、小數 | 正確處理符號及數值 |
-| 複製後修改原物件 | 複製品不變 |
-| 指定後修改來源、自我指定 | 資料不會損壞 |
-| 負項數、負指數 | 輸入失敗 |
-| 缺資料、文字、超出 int 的指數 | 輸入失敗，保留原物件 |
-| 80 個不同指數 | 多次擴充後 Eval(1) = 80 |
-| 指數相加超出 int 範圍 | 拋出錯誤 |
-| x 從 -10 到 10 | 驗證 (A+B)(x)=A(x)+B(x)，以及乘法對應等式 |
+| 2x^2 - 3x + 1 加上 x - 1 | 2x^2 - 2x |
+| 2x^2 - 3x + 1 乘上 x - 1 | 2x^3 - 5x^2 + 4x - 1 |
+| 2x^2 - 3x + 1 代入 2、0、-1 | 3、1、6 |
+| 零多項式相加和相乘 | 答案正確，零會印成 0 |
+| 輸入順序不同、指數重複 | 會排序，也會合併 |
+| 同次方抵消 | 會移除係數是 0 的項 |
+| 係數是 -1 或小數 | 符號和數值正確 |
+| 輸入 80 個不同次方的項 | 陣列擴充後，代入 1 得到 80 |
+| 複製後修改原物件 | 複製品不受影響 |
+| 自我指定、連續指定 | 資料正確 |
+| 負項數、負指數、文字、資料不足 | 輸入失敗，原物件不變 |
+| 指數或係數超出範圍 | 拒絕輸入或回報錯誤 |
+| x 從 -10 到 10 | 加法及乘法的代入結果符合運算等式 |
 
 ### 編譯與執行指令
 
-在專案根目錄執行，這邊使用 PowerShell 和 GCC 16.2.0。編譯時有開啟警告檢查，沒有出現警告。先把 g++ 所在的資料夾加入目前視窗的 PATH：
-
-```powershell
-$ $env:PATH = 'C:\Users\TUF GAMING A15\.local\compilers\w64devkit\bin;' + $env:PATH
-```
+使用 GCC 16.2.0，在專案根目錄執行：
 
 ```shell
-$ g++ -std=c++17 -Wall -Wextra -pedantic homework2/src/Polynomial.cpp homework2/src/main.cpp -o homework2.exe
-$ "3 2 2 -3 1 1 0 2 1 1 -1 0 2" | .\homework2.exe
-```
-
-實際輸出：
-
-```text
+$ g++ -std=c++17 -Wall -Wextra -pedantic homework2/src/main.cpp -o homework2.exe
+$ echo "3 2 2 -3 1 1 0 2 1 1 -1 0 2" | .\homework2.exe
 A = 2x^2 - 3x + 1
 B = x - 1
 A + B = 2x^2 - 2x
@@ -386,52 +258,39 @@ A(2) = 3
 B(2) = 1
 ```
 
-```shell
-$ g++ -std=c++17 -Wall -Wextra -pedantic homework2/src/Polynomial.cpp homework2/src/tests.cpp -o homework2-tests.exe
-$ .\homework2-tests.exe
-```
-
-實際輸出：
-
-```text
-74 checks, 0 failures
-```
-
-另外用 `-D_GLIBCXX_ASSERTIONS` 重新編譯測試，結果也相同。這不代表所有可能的輸入都沒問題，但表格列出的情況都有實際檢查。
+第一個 3 是 A 的項數，後面三組是 A 的係數和指數。接下來的 2 是 B 的項數，再後面兩組是 B 的資料，最後的 2 是要代入的 x。
 
 ### 結論
 
-這次測試下來，加法、乘法和代入算出來的結果都符合測試的答案，74 項檢查也都有通過。另外有確認輸入錯誤時原本的多項式不會被改掉，還有複製的兩個物件不會互相影響。
+測試下來，加法、乘法和代入的結果都有符合答案。除了正常的輸入，也有測一些容易漏掉的情況，像是同次方抵消和複製物件。這幾個地方如果只看一般的範例，其實不太容易看出有沒有問題。
 
 ### 效能量測
 
-這邊用 `measure.ps1` 測量整支程式的時間，兩個多項式都是 n 項，係數都是 1，指數從 0 到 n-1，代入值也是 1。主程式用 `-O2` 編譯，每組執行 5 次取平均。
+用 measure.ps1 測量，兩個多項式都是 n 項，係數都是 1，指數從 0 到 n-1，代入 1。主程式用 -O2 編譯，每組跑 5 次取平均。
 
-| 每個多項式的項數 | 平均時間（毫秒） |
+| 每個多項式的項數 | 平均時間，毫秒 |
 | --- | --- |
-| 10 | 34.763 |
-| 100 | 30.795 |
-| 1000 | 305.741 |
+| 10 | 65.667 |
+| 100 | 31.190 |
+| 1000 | 291.371 |
+
+這是合併成單一檔案後重新量到的時間。時間包含啟動、輸入、運算和輸出，所以小筆數的差異不一定是運算本身造成的，不能只用這個表格判斷演算法的快慢。
 
 ```shell
-$ g++ -std=c++17 -O2 homework2/src/Polynomial.cpp homework2/src/main.cpp -o homework2.exe
+$ g++ -std=c++17 -O2 homework2/src/main.cpp -o homework2.exe
 $ .\homework2\measure.ps1 -Program .\homework2.exe
 ```
-
-這個時間包含程式啟動、輸入、運算和輸出，輸出由腳本接收後丟棄。所以 10 項和 100 項的差異不能直接拿來判斷算法快慢，短時間的測量會受到啟動和系統狀態影響。1000 項花的時間比較多，也可以看出項數增加後，乘法和插入的工作量會增加。
 
 ## 申論及開發報告
 
 ### 選擇這個資料結構的原因
 
-這題是按照投影片的方式，用 Term 陣列來存，所以保留了 termArray、capacity、terms 這三個成員。這樣可以只存有用的項，也能練習陣列滿了要怎麼擴充。比較要注意的是指標複製：只把位址複製過去雖然程式很短，但物件結束時就可能重複釋放，所以這裡用各自的陣列。
+這題依照投影片用 Term 陣列來存多項式，只存係數不為 0 的項。如果一個多項式只有 x^1000 + 1，也只要存兩項，不需要把中間的次方全部存下來。
 
-加法和乘法最後都會用到 Insert，主要是想把相同次方的合併放在同一個地方，這樣比較不會漏掉。不過每次插入都可能搬資料，項數很多時會慢。之後可以把加法改成同時走訪兩個已排序陣列，讓時間降到 O(m+n)。
-
-浮點數有精度限制，所以只在係數確實等於 0 時刪除，沒有隨便用一個門檻把很小的數當成零。即使如此，很多小數連續運算還是可能有誤差，這是這份程式要注意的限制。
+加法和乘法都有用到 Insert，主要是因為兩邊都需要合併同次方，所以放在同一個函式比較好修改。不過每次插入可能要搬資料，項數多的時候還是會變慢。
 
 ### 開發時遇到的問題
 
-第一次實際編譯時，發現輸出函式不能直接讀 Term 裡面的 coef 和 exp。原本以為它是 Polynomial 的朋友函式就可以，但 Term 只把 Polynomial 類別設為朋友，這個權限不會再傳給其他函式。後來改成由 Polynomial 的 Print 處理輸出，`<<` 再呼叫它，才順利編譯。
+第一次編譯時，輸出函式讀不到 Term 的私有資料。後來才確認，Term 只把 Polynomial 類別設為朋友，並不是 Polynomial 的朋友函式也能直接讀。所以改成讓類別裡面的 Print 處理輸出，<< 再去呼叫它。
 
-另外，測試有特別放入同次方抵消、陣列超過原本容量，還有把物件指定給自己這幾種情況。這些平常只輸入一兩組數字不一定會遇到，所以另外寫成測試比較好確認。
+另外有測複製後再修改資料，確認兩個物件的陣列是分開的。浮點數也有精度限制，所以這邊只有係數真的等於 0 才刪除，不會把很小的係數直接當成 0。
