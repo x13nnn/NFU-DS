@@ -189,6 +189,16 @@ int main() {
 
 ### 編譯與執行指令
 
+以下保留在電腦上使用的編譯指令。另將同一份程式貼到 Programiz C++ 線上編譯器，按 Run 後輸入測試資料，實際結果如下圖。網站會代為編譯，不需要在網站輸入下面的 PowerShell 指令。
+
+Problem 1 輸入 3 4，兩種寫法都得到 125。
+
+![Problem 1 線上執行結果](images/problem1-run.png)
+
+Problem 2 輸入 3 1 2 3，共列出 8 個子集合。
+
+![Problem 2 線上執行結果](images/problem2-run.png)
+
 Problem 1：
 
 ```shell
