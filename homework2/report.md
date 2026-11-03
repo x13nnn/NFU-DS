@@ -246,7 +246,7 @@ int main() {
 
 ### 編譯與執行指令
 
-以下使用 GCC 16.2.0，在  homework2 資料夾執行Windows PowerShell 。輸入下面的指令。
+以下使用 GCC 16.2.0，在專案根目錄開啟 Windows PowerShell，再輸入下面的指令。這個位置可以看到 homework2 資料夾。
 
 第一行是編譯指令，-std=c++17 指定 C++17，-Wall、-Wextra 和 -pedantic 用來檢查警告，-o 指定產生的執行檔名稱。編譯成功時沒有顯示錯誤或警告。
 
@@ -271,6 +271,43 @@ B(2) = 1
 ### 結論
 
 測試下來，加法、乘法和代入的結果都有符合答案。除了正常的輸入，也有測一些容易漏掉的情況，像是同次方抵消和複製物件。這幾個地方如果只看一般的範例，其實不太容易看出有沒有問題。
+
+## 效能量測
+
+這邊用 PowerShell 的 Measure-Command 計時，不用在 C++ 裡加新的標頭。兩個多項式都輸入相同的 n 項，每項係數是 1，指數從 0 到 n-1，最後代入 1。分別測 10、100 和 1000 項，每組先跑一次，再跑 5 次取平均。
+
+先在專案根目錄編譯，這次加上 -O2，再把下面的 PowerShell 程式整段貼到終端機執行。
+
+```shell
+$ g++ -std=c++17 -O2 homework2/src/main.cpp -o homework2.exe
+```
+
+```powershell
+foreach ($n in @(10, 100, 1000)) {
+    $terms = for ($i = 0; $i -lt $n; $i++) { "1 $i" }
+    $poly = "$n " + ($terms -join ' ')
+    $data = "$poly $poly 1"
+    $data | .\homework2.exe | Out-Null
+    $times = for ($repeat = 0; $repeat -lt 5; $repeat++) {
+        $elapsed = Measure-Command {
+            $data | .\homework2.exe | Out-Null
+        }
+        $elapsed.TotalMilliseconds
+    }
+    $average = ($times | Measure-Object -Average).Average
+    'n={0}; mean={1:F3} ms' -f $n, $average
+}
+```
+
+以下是結果
+
+| 每個多項式的項數 | 5 次平均時間（毫秒） |
+| :--- | :--- |
+| 10 | 24.976 |
+| 100 | 26.874 |
+| 1000 | 282.027 |
+
+這個時間包含程式啟動、輸入、加法、乘法、代入和輸出，輸出用 Out-Null 接收後丟棄，所以不是單獨測乘法的時間。小筆數的時間容易受到系統狀態影響，不能只看哪一次比較快。這組測試中，1000 項花的時間比較多，因為兩個多項式每一項都要互相相乘，後面還要合併同次方的項。換一台電腦或重新執行，數字也會不同。
 
 ## 申論及開發報告
 
